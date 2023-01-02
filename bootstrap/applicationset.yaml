@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: karlj-applications
+  namespace: argocd
+spec:
+  generators:
+  # Deploy Nginx to staging and production clusters
+  - matrix:
+      generators:
+      - list:
+          elements:
+          - cluster: staging-cluster
+            url: https://kubernetes.default.svc
+            env: staging
+          - cluster: production-cluster
+            url: https://10.211.55.63:8443
+            env: production
+      - list:
+          elements:
+          - appName: nginx
+  # Deploy Apache to staging cluster
+  - matrix:
+      generators:
+      - list:
+          elements:
+          - cluster: staging-cluster
+            url: https://kubernetes.default.svc
+            env: staging
+      - list:
+          elements:
+          - appName: apache
+  # Deploy Redis to all clusters and override template to use the same Helm values for all clusters
+  - clusters:
+      template:
+        metadata:
+          finalizers:
+            - resources-finalizer.argocd.argoproj.io
+          name: '{{name}}-redis'
+          namespace: argocd
+        spec:
+          project: karlj
+          source:
+            path: applications/redis
+            repoURL: https://github.com/karlmjogila/argocd.git
+            plugin:
+              env:
+                - name: HELM_ARGS
+                  value: -f values.yaml
+          destination:
+            server: "{{server}}"
+            namespace: argocd
+  template:
+    metadata:
+      finalizers:
+      - resources-finalizer.argocd.argoproj.io
+      name: '{{cluster}}-{{appName}}'
+      namespace: argocd
+    spec:
+      project: karlj
+      syncPolicy:
+        automated:
+          selfHeal: true
+      source:
+        path: 'applications/{{appName}}/{{env}}'
+        repoURL: https://github.com/karlmjogila/argocd.git
+        plugin:
+          env:
+          - name: HELM_ARGS
+            value: -f ../values.yaml -f values-deployments.yaml
+      destination:
+        server: '{{url}}'
+        namespace: argocd

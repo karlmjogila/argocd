@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: karlj
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: KarlJ Test
+  sourceRepos:
+    - 'https://github.com/karlmjogila/argocd'
+  clusterResourceWhitelist:
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+    - group: ''
+      kind: Namespace
+    - group: 'storage.k8s.io'
+      kind: StorageClass
+  destinations:
+    - namespace: '*'
+      server: '*'
